@@ -1,9 +1,14 @@
 import type { Redis } from 'ioredis'
 import type { Accommodation, SearchParams, SearchRecord, SearchStatus } from '../providers/types.js'
+import type { ISearchStore } from './ISearchStore.js'
 
 const SEARCH_TTL_SECONDS = 3600
 
-export class SearchStore {
+function isSearchStatus(value: string): value is SearchStatus {
+  return value === 'pending' || value === 'complete'
+}
+
+export class SearchStore implements ISearchStore {
   constructor(private readonly redis: Redis) {}
 
   private statusKey(id: string): string {
@@ -18,22 +23,26 @@ export class SearchStore {
     return `search:key:${params.ski_site}:${params.from_date}:${params.to_date}:${params.group_size}`
   }
 
-  async findExistingId(params: SearchParams): Promise<string | null> {
-    return this.redis.get(this.cacheKey(params))
+  async acquireSlot(id: string, params: SearchParams): Promise<string> {
+    const key = this.cacheKey(params)
+    const result = await this.redis.set(key, id, 'EX', SEARCH_TTL_SECONDS, 'NX')
+    if (result === 'OK') return id
+    const existingId = await this.redis.get(key)
+    return existingId ?? id
   }
 
-  async create(id: string, params: SearchParams): Promise<void> {
-    await Promise.all([
-      this.redis.set(this.statusKey(id), 'pending', 'EX', SEARCH_TTL_SECONDS),
-      this.redis.set(this.cacheKey(params), id, 'EX', SEARCH_TTL_SECONDS),
-    ])
+  async create(id: string): Promise<void> {
+    await this.redis.set(this.statusKey(id), 'pending', 'EX', SEARCH_TTL_SECONDS)
   }
 
   async appendResults(id: string, results: Accommodation[]): Promise<void> {
     if (results.length === 0) return
     const serialized = results.map((r) => JSON.stringify(r))
-    await this.redis.rpush(this.resultsKey(id), ...serialized)
-    await this.redis.expire(this.resultsKey(id), SEARCH_TTL_SECONDS)
+    await this.redis
+      .pipeline()
+      .rpush(this.resultsKey(id), ...serialized)
+      .expire(this.resultsKey(id), SEARCH_TTL_SECONDS)
+      .exec()
   }
 
   async complete(id: string): Promise<void> {
@@ -41,12 +50,15 @@ export class SearchStore {
   }
 
   async get(id: string): Promise<SearchRecord | null> {
-    const status = await this.redis.get(this.statusKey(id))
-    if (status === null) return null
+    const [[, status], [, raw]] = await this.redis
+      .pipeline()
+      .get(this.statusKey(id))
+      .lrange(this.resultsKey(id), 0, -1)
+      .exec() as [[null, string | null], [null, string[]]]
 
-    const raw = await this.redis.lrange(this.resultsKey(id), 0, -1)
-    const results = raw.map((item) => JSON.parse(item) as Accommodation)
+    if (status === null || !isSearchStatus(status)) return null
 
-    return { id, status: status as SearchStatus, results }
+    const results = (raw ?? []).map((item) => JSON.parse(item) as Accommodation)
+    return { id, status, results }
   }
 }

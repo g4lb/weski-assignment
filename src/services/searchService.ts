@@ -1,21 +1,28 @@
 import { randomUUID } from 'crypto'
 import type { AccommodationProvider, SearchParams, SearchRecord } from '../providers/types.js'
-import type { SearchStore } from '../store/searchStore.js'
+import type { ISearchStore } from '../store/ISearchStore.js'
 
 export class SearchService {
+  private readonly maxGroupSize: number
+
   constructor(
-    private readonly store: SearchStore,
+    private readonly store: ISearchStore,
     private readonly providers: AccommodationProvider[],
-    private readonly maxGroupSize = 6,
-  ) {}
+    maxGroupSize = 6,
+  ) {
+    if (maxGroupSize < 1) {
+      throw new Error(`MAX_GROUP_SIZE must be at least 1, got ${maxGroupSize}`)
+    }
+    this.maxGroupSize = maxGroupSize
+  }
 
   async initiateSearch(params: SearchParams): Promise<string> {
-    const existingId = await this.store.findExistingId(params)
-    if (existingId !== null) return existingId
-
     const id = randomUUID()
-    await this.store.create(id, params)
+    const winnerId = await this.store.acquireSlot(id, params)
 
+    if (winnerId !== id) return winnerId
+
+    await this.store.create(id)
     void this.runSearch(id, params)
 
     return id
