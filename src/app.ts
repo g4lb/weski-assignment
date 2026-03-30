@@ -1,8 +1,6 @@
-import express, { type NextFunction, type Request, type Response } from 'express'
+import express, { type NextFunction, type Request, type Response, type Router } from 'express'
 import rateLimit from 'express-rate-limit'
 import { ErrorMessage, HttpStatus } from './constants/index.js'
-import { createSearchRouter } from './routes/search.js'
-import type { SearchService } from './services/searchService.js'
 
 function createRateLimiter() {
   return rateLimit({
@@ -29,12 +27,12 @@ function errorHandler(err: unknown, _req: Request, res: Response, _next: NextFun
   res.status(status).json({ error: message })
 }
 
-export function createApp(searchService: SearchService): express.Application {
+export function createApp(router: Router): express.Application {
   const app = express()
 
   app.use(express.json({ limit: '4kb' }))
   app.use(createRateLimiter())
-  app.use(createSearchRouter(searchService))
+  app.use(router)
   app.use(errorHandler)
 
   return app

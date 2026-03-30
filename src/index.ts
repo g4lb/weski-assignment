@@ -2,6 +2,7 @@ import { Redis } from 'ioredis'
 import { createApp } from './app.js'
 import { config } from './config.js'
 import { HotelsSimulatorProvider } from './providers/hotelsSimulator.js'
+import { createSearchRouter } from './routes/search.js'
 import { SearchService } from './services/searchService.js'
 import { SearchStore } from './store/searchStore.js'
 
@@ -14,7 +15,8 @@ redis.on('error', (err: unknown) => {
 const store = new SearchStore(redis)
 const providers = [new HotelsSimulatorProvider(config.hotelsSimulatorUrl)]
 const searchService = new SearchService(store, providers, config.maxGroupSize)
-const app = createApp(searchService)
+const router = createSearchRouter(searchService)
+const app = createApp(router)
 
 app.listen(config.port, () => {
   console.log(`Server running on port ${config.port}`)
