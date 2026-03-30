@@ -12,6 +12,11 @@ const HOTELS_SIMULATOR_URL =
   'https://gya7b1xubh.execute-api.eu-west-2.amazonaws.com/default/HotelsSimulator'
 
 const redis = new Redis(REDIS_URL)
+
+redis.on('error', (err: unknown) => {
+  console.error('Redis connection error:', err)
+})
+
 const store = new SearchStore(redis)
 const providers = [new HotelsSimulatorProvider(HOTELS_SIMULATOR_URL)]
 const searchService = new SearchService(store, providers, MAX_GROUP_SIZE)

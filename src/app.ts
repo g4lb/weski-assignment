@@ -6,7 +6,7 @@ import type { SearchService } from './services/searchService.js'
 export function createApp(searchService: SearchService): express.Application {
   const app = express()
 
-  app.use(express.json())
+  app.use(express.json({ limit: '4kb' }))
   app.use(createSearchRouter(searchService))
 
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
