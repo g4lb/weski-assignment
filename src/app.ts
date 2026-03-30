@@ -20,8 +20,14 @@ export function createApp(searchService: SearchService): express.Application {
   app.use(createSearchRouter(searchService))
 
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
-    console.error('Unhandled error:', err)
-    res.status(HttpStatus.InternalServerError).json({ error: ErrorMessage.InternalServerError })
+    const status =
+      typeof err === 'object' && err !== null && 'status' in err && typeof err.status === 'number'
+        ? err.status
+        : HttpStatus.InternalServerError
+    const message =
+      status === HttpStatus.InternalServerError ? ErrorMessage.InternalServerError : String((err as { message?: unknown }).message ?? ErrorMessage.InternalServerError)
+    if (status === HttpStatus.InternalServerError) console.error('Unhandled error:', err)
+    res.status(status).json({ error: message })
   })
 
   return app
