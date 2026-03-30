@@ -280,7 +280,67 @@ src/
 | `ioredis`     | Redis client               |
 | `typescript`  | Already installed          |
 | `tsx`         | Dev server / TS execution  |
-| `@types/express`, `@types/node` | Type definitions |
+| `@types/express`, `@types/node`, `@types/uuid` | Type definitions |
+
+**npm scripts:**
+
+| Script        | Command                  |
+|--------------|--------------------------|
+| `dev`        | `tsx watch src/index.ts` |
+| `build`      | `tsc`                    |
+| `start`      | `node dist/index.js`     |
+
+---
+
+## Building and Running
+
+### Prerequisites
+
+- Node.js 20+
+- Docker (for Redis)
+
+### Setup
+
+```bash
+npm install
+```
+
+Copy the environment template and fill in values:
+
+```bash
+cp .env.example .env
+```
+
+`.env.example`:
+```
+PORT=3000
+REDIS_URL=redis://localhost:6379
+MAX_GROUP_SIZE=6
+HOTELS_SIMULATOR_URL=https://gya7b1xubh.execute-api.eu-west-2.amazonaws.com/default/HotelsSimulator
+```
+
+### Start Redis
+
+```bash
+docker run -d -p 6379:6379 redis:alpine
+```
+
+### Development
+
+Runs TypeScript directly via `tsx` with hot reload:
+
+```bash
+npm run dev
+```
+
+### Production
+
+Compile then run:
+
+```bash
+npm run build   # tsc → dist/
+npm start       # node dist/index.js
+```
 
 ---
 
