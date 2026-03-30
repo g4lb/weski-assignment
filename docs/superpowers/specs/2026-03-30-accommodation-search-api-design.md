@@ -1,7 +1,7 @@
 # Accommodation Search API — Design Spec
 
 **Date:** 2026-03-30
-**Project:** WeSki — Full Stack Assignment
+**Project:** WeSki — Backend Assignment
 
 ---
 
@@ -91,6 +91,8 @@ The client polls this endpoint. When `status === "complete"`, all provider calls
 POST /search
   │
   ├─ Validate request body
+  ├─ Compute cache key from (ski_site, from_date, to_date, group_size)
+  ├─ If matching search exists in store → return its id (no new requests fired)
   ├─ Generate UUID (search id)
   ├─ Write to store: { id, status: "pending", results: [] }
   ├─ Return { id } to client
@@ -105,6 +107,18 @@ POST /search
 ```
 
 Provider call failures are caught, logged, and treated as empty results. The search still completes with whatever succeeded.
+
+---
+
+## Request Efficiency
+
+The external API has rate limits, so unnecessary calls must be avoided:
+
+**Search deduplication:** The store maintains a secondary index keyed by a cache key derived from `ski_site + from_date + to_date + group_size`. If POST /search receives parameters identical to an existing search (pending or complete), it returns the existing `id` immediately — no new provider calls are made.
+
+**Parallel fan-out:** All group size variants and all providers fire simultaneously via `Promise.allSettled`. No sequential waiting between calls.
+
+**Single fetch per search:** GET /search/:id never calls the provider. Results are written once (at POST time) and read many times.
 
 ---
 
@@ -219,7 +233,9 @@ interface SearchRecord {
   results: Accommodation[]
 }
 
-// Map<searchId, SearchRecord>
+// Primary index:   Map<searchId, SearchRecord>
+// Secondary index: Map<cacheKey, searchId>
+// cacheKey = `${ski_site}:${from_date}:${to_date}:${group_size}`
 ```
 
 A plain `Map` is sufficient for the assignment scope. No persistence, no TTL. The store is a singleton injected into `SearchService`.
