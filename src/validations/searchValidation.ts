@@ -5,13 +5,23 @@ import type { SearchParams } from '../providers/types.js'
 
 const searchSchema = z.object({
   ski_site: z
-    .number({ invalid_type_error: ErrorMessage.SkiSiteMustBeNumber })
+    .number({
+      required_error: ErrorMessage.SkiSiteRequired,
+      invalid_type_error: ErrorMessage.SkiSiteMustBeNumber,
+    })
     .int()
     .refine((id) => validResortIds.has(id), { message: ErrorMessage.SkiSiteInvalid }),
-  from_date: z.string().min(1, ErrorMessage.FromDateRequired),
-  to_date: z.string().min(1, ErrorMessage.ToDateRequired),
+  from_date: z
+    .string({ required_error: ErrorMessage.FromDateRequired })
+    .min(1, ErrorMessage.FromDateRequired),
+  to_date: z
+    .string({ required_error: ErrorMessage.ToDateRequired })
+    .min(1, ErrorMessage.ToDateRequired),
   group_size: z
-    .number({ invalid_type_error: ErrorMessage.GroupSizeMustBeNumber })
+    .number({
+      required_error: ErrorMessage.GroupSizeRequired,
+      invalid_type_error: ErrorMessage.GroupSizeMustBeNumber,
+    })
     .int()
     .positive(ErrorMessage.GroupSizeMustBePositive),
 })
