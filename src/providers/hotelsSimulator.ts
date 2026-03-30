@@ -36,9 +36,37 @@ interface SimulatorResponse {
 }
 
 export class HotelsSimulatorProvider implements AccommodationProvider {
-  constructor(private readonly url: string) {}
+  private readonly maxGroupSize: number
+
+  constructor(
+    private readonly url: string,
+    maxGroupSize = 6,
+  ) {
+    if (maxGroupSize < 1) {
+      throw new Error(`maxGroupSize must be at least 1, got ${maxGroupSize}`)
+    }
+    this.maxGroupSize = maxGroupSize
+  }
 
   async search(params: SearchParams): Promise<Accommodation[]> {
+    const groupSizes = this.groupSizeVariants(params.group_size)
+
+    const results = await Promise.allSettled(
+      groupSizes.map((group_size) => this.fetchAccommodations({ ...params, group_size })),
+    )
+
+    return results.flatMap((r) => (r.status === 'fulfilled' ? r.value : []))
+  }
+
+  private groupSizeVariants(baseSize: number): number[] {
+    const sizes: number[] = []
+    for (let size = baseSize; size <= Math.min(baseSize + 2, this.maxGroupSize); size++) {
+      sizes.push(size)
+    }
+    return sizes
+  }
+
+  private async fetchAccommodations(params: SearchParams): Promise<Accommodation[]> {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
 
