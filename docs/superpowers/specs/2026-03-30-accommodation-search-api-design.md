@@ -7,7 +7,7 @@
 
 ## Overview
 
-A Node.js/TypeScript REST API that serves a ski accommodation search client. The client submits a search, receives an ID, then polls for results. The API fans out to one or more external accommodation providers in the background, aggregating results into an in-memory store. GET requests read only from the store — the provider is never called more than once per search.
+A stateless Node.js/TypeScript REST API that serves a ski accommodation search client. The client submits a search, receives an ID, then polls for results. The API fans out to one or more external accommodation providers in the background, aggregating results into a shared Redis store. Any API instance can serve any client's request. GET requests read only from the store — the provider is never called more than once per unique search.
 
 ---
 
@@ -224,7 +224,9 @@ Used at request validation time to verify that `ski_site` is a known resort ID.
 
 ---
 
-## In-Memory Store
+## Store — Redis
+
+The API is stateless: no in-process state. All search records are stored in a shared Redis instance, allowing any number of API instances to serve any client's requests.
 
 ```typescript
 interface SearchRecord {
@@ -232,13 +234,18 @@ interface SearchRecord {
   status: "pending" | "complete"
   results: Accommodation[]
 }
-
-// Primary index:   Map<searchId, SearchRecord>
-// Secondary index: Map<cacheKey, searchId>
-// cacheKey = `${ski_site}:${from_date}:${to_date}:${group_size}`
 ```
 
-A plain `Map` is sufficient for the assignment scope. No persistence, no TTL. The store is a singleton injected into `SearchService`.
+**Keys:**
+- `search:{id}` → serialized `SearchRecord` (primary lookup by search ID)
+- `search:key:{cacheKey}` → search ID (deduplication index)
+- `cacheKey = ski_site:from_date:to_date:group_size`
+
+**TTL:** Both keys expire after a configurable window (e.g. 1 hour) to avoid unbounded growth.
+
+**Client:** `ioredis`. The Redis connection is injected into `SearchStore`, which is injected into `SearchService` — no global state anywhere.
+
+**Local development:** Redis runs via Docker (`docker run -p 6379:6379 redis:alpine`).
 
 ---
 
@@ -270,6 +277,7 @@ src/
 | `express`     | HTTP framework             |
 | `uuid`        | Search ID generation       |
 | `zod`         | Request body validation    |
+| `ioredis`     | Redis client               |
 | `typescript`  | Already installed          |
 | `tsx`         | Dev server / TS execution  |
 | `@types/express`, `@types/node` | Type definitions |
