@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express'
+import { ErrorMessage, HttpStatus } from '../constants/index.js'
 import type { SearchService } from '../services/searchService.js'
 import { validateSearchBody } from '../validations/searchValidation.js'
 
@@ -8,7 +9,7 @@ export class SearchController {
   async initiateSearch(req: Request, res: Response): Promise<void> {
     const validation = validateSearchBody(req.body)
     if (!validation.success) {
-      res.status(400).json({ error: validation.error })
+      res.status(HttpStatus.BadRequest).json({ error: validation.error })
       return
     }
 
@@ -21,7 +22,7 @@ export class SearchController {
     const record = await this.searchService.getSearch(id)
 
     if (record === null) {
-      res.status(404).json({ error: 'Search not found' })
+      res.status(HttpStatus.NotFound).json({ error: ErrorMessage.SearchNotFound })
       return
     }
 
