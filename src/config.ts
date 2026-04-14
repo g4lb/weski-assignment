@@ -5,4 +5,5 @@ export const config = {
   hotelsSimulatorUrl:
     process.env['HOTELS_SIMULATOR_URL'] ??
     'https://gya7b1xubh.execute-api.eu-west-2.amazonaws.com/default/HotelsSimulator',
+  bookingUrl: process.env['BOOKING_URL'] ?? 'https://api.booking.example/hotels',
 }

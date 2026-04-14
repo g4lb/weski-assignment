@@ -1,6 +1,7 @@
 import { Redis } from 'ioredis'
 import { createApp } from './app.js'
 import { config } from './config.js'
+import { BookingProvider } from './providers/bookingProvider.js'
 import { HotelsSimulatorProvider } from './providers/hotelsSimulator.js'
 import { createSearchRouter } from './routes/search.js'
 import { SearchService } from './services/searchService.js'
@@ -13,7 +14,10 @@ redis.on('error', (err: unknown) => {
 })
 
 const store = new SearchStore(redis)
-const providers = [new HotelsSimulatorProvider(config.hotelsSimulatorUrl, config.maxGroupSize)]
+const providers = [
+  new HotelsSimulatorProvider(config.hotelsSimulatorUrl, config.maxGroupSize),
+  new BookingProvider(config.bookingUrl),
+]
 const searchService = new SearchService(store, providers)
 const router = createSearchRouter(searchService)
 const app = createApp(router)
