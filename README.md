@@ -1,6 +1,6 @@
 # Accommodation Search API
 
-Stateless REST API for searching ski accommodation availability.
+Stateless REST API for searching accommodation availability across multiple providers.
 
 ## Setup
 
@@ -19,16 +19,21 @@ Starts a search and returns an ID immediately. Poll `GET /search/:id` for result
 
 ```json
 {
-  "ski_site": 4,
+  "location": "Chamonix",
   "from_date": "03/04/2025",
   "to_date": "03/11/2025",
-  "group_size": 2
+  "group_size": 2,
+  "price_min": 100,
+  "price_max": 500,
+  "amenities": ["wifi", "pool"]
 }
 ```
 
-- `ski_site` — Resort ID: 1 Val Thorens, 2 Courchevel, 3 Tignes, 4 La Plagne, 5 Chamonix
-- `from_date` / `to_date` — `MM/DD/YYYY` format
-- `group_size` — Number of guests
+- `location` — Destination name (required)
+- `from_date` / `to_date` — `MM/DD/YYYY` format (required)
+- `group_size` — Number of guests (required)
+- `price_min` / `price_max` — Price range filter (optional, `price_min` must be ≤ `price_max`)
+- `amenities` — List of desired amenities (optional)
 
 ### GET /search/:id
 
