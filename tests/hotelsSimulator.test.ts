@@ -1,5 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { HotelsSimulatorProvider } from '../src/providers/hotelsSimulator.js'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Accommodation, SearchParams } from '../src/providers/types.js'
 
 const params: SearchParams = {
@@ -34,19 +33,36 @@ const simulatorAccommodation = {
   },
 }
 
+let mockConfig = {
+  accommodationProviderUrl: 'http://test',
+  maxGroupSize: 6,
+}
+
+vi.mock('../src/config.js', () => ({
+  get config() {
+    return mockConfig
+  },
+}))
+
 afterEach(() => {
   vi.restoreAllMocks()
 })
 
+beforeEach(() => {
+  mockConfig = { accommodationProviderUrl: 'http://test', maxGroupSize: 6 }
+})
+
 describe('HotelsSimulatorProvider', () => {
   it('normalizes simulator response to Accommodation', async () => {
+    mockConfig.maxGroupSize = 2
     const mockResponse = {
       ok: true,
       json: async () => ({ statusCode: 200, body: { accommodations: [simulatorAccommodation] } }),
     }
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse as Response)
 
-    const provider = new HotelsSimulatorProvider('http://test', 2)
+    const { HotelsSimulatorProvider } = await import('../src/providers/hotelsSimulator.js')
+    const provider = new HotelsSimulatorProvider()
     const results: Accommodation[] = []
     await provider.search(params, async (r) => { results.push(...r) })
 
@@ -64,6 +80,7 @@ describe('HotelsSimulatorProvider', () => {
   })
 
   it('defaults amenities to empty array when not present', async () => {
+    mockConfig.maxGroupSize = 2
     const noAmenities = { ...simulatorAccommodation, HotelInfo: { ...simulatorAccommodation.HotelInfo, Amenities: undefined } }
     const mockResponse = {
       ok: true,
@@ -71,7 +88,8 @@ describe('HotelsSimulatorProvider', () => {
     }
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse as Response)
 
-    const provider = new HotelsSimulatorProvider('http://test', 2)
+    const { HotelsSimulatorProvider } = await import('../src/providers/hotelsSimulator.js')
+    const provider = new HotelsSimulatorProvider()
     const results: Accommodation[] = []
     await provider.search(params, async (r) => { results.push(...r) })
 
@@ -79,20 +97,24 @@ describe('HotelsSimulatorProvider', () => {
   })
 
   it('fans out to group_size variants up to maxGroupSize', async () => {
+    mockConfig.maxGroupSize = 4
     const mockResponse = {
       ok: true,
       json: async () => ({ statusCode: 200, body: { accommodations: [] } }),
     }
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse as Response)
 
-    const provider = new HotelsSimulatorProvider('http://test', 4)
+    const { HotelsSimulatorProvider } = await import('../src/providers/hotelsSimulator.js')
+    const provider = new HotelsSimulatorProvider()
     await provider.search(params, async () => {})
 
     // group_size=2, maxGroupSize=4 → variants: 2, 3, 4
     expect(fetchSpy).toHaveBeenCalledTimes(3)
   })
 
-  it('throws on maxGroupSize < 1', () => {
-    expect(() => new HotelsSimulatorProvider('http://test', 0)).toThrow('maxGroupSize must be at least 1')
+  it('throws on maxGroupSize < 1', async () => {
+    mockConfig.maxGroupSize = 0
+    const { HotelsSimulatorProvider } = await import('../src/providers/hotelsSimulator.js')
+    expect(() => new HotelsSimulatorProvider()).toThrow('maxGroupSize must be at least 1')
   })
 })

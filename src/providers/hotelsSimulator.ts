@@ -1,3 +1,4 @@
+import { config } from '../config.js'
 import type { Accommodation, AccommodationProvider, OnResults, SearchParams } from './types.js'
 
 const FETCH_TIMEOUT_MS = 5000
@@ -37,16 +38,13 @@ interface SimulatorResponse {
 }
 
 export class HotelsSimulatorProvider implements AccommodationProvider {
-  private readonly maxGroupSize: number
+  private readonly url = config.accommodationProviderUrl
+  private readonly maxGroupSize = config.maxGroupSize
 
-  constructor(
-    private readonly url: string,
-    maxGroupSize = 6,
-  ) {
-    if (maxGroupSize < 1) {
-      throw new Error(`maxGroupSize must be at least 1, got ${maxGroupSize}`)
+  constructor() {
+    if (this.maxGroupSize < 1) {
+      throw new Error(`maxGroupSize must be at least 1, got ${this.maxGroupSize}`)
     }
-    this.maxGroupSize = maxGroupSize
   }
 
   async search(params: SearchParams, onResults: OnResults): Promise<void> {

@@ -15,7 +15,7 @@ redis.on('error', (err: unknown) => {
 
 const store = new SearchStore(redis)
 const providers = [
-  new HotelsSimulatorProvider(config.accommodationProviderUrl, config.maxGroupSize),
+  new HotelsSimulatorProvider(),
   new BookingProvider(config.bookingUrl),
 ]
 const searchService = new SearchService(store, providers)
